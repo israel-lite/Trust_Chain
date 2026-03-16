@@ -1,0 +1,73 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --deep-blue: #1e3a8a;
+  --dark-slate: #334155;
+  --emerald-green: #10b981;
+  --soft-gray: #f8fafc;
+  --light-gray: #f1f5f9;
+  --border-gray: #e2e8f0;
+  --darker-bg: #0f172a;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #0f172a;
+  color: var(--dark-slate);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.fintech-gradient {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+}
+
+.fintech-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border-gray);
+}
+
+.fintech-input {
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200;
+}
+
+.fintech-button {
+  @apply w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 transform hover:scale-[1.02];
+}
+
+.fintech-button-primary {
+  @apply fintech-button bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+.fintech-button-secondary {
+  @apply fintech-button bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+}
+
+.password-strength-weak {
+  @apply bg-red-500;
+}
+
+.password-strength-fair {
+  @apply bg-yellow-500;
+}
+
+.password-strength-strong {
+  @apply bg-green-500;
+}
+
+.password-strength-very-strong {
+  @apply bg-blue-500;
+}
+
+.loading-spinner {
+  @apply inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin;
+}
