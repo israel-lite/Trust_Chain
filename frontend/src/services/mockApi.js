@@ -77,10 +77,10 @@ const initializeMultiCurrencyWallet = (userId) => {
   if (!multiCurrencyWallets[userId]) {
     multiCurrencyWallets[userId] = {
       USD: 5000.00,     // Default USD balance
-      NGN: 0.00,        // Nigerian Naira
-      EUR: 0.00,        // Euro
-      GBP: 0.00,        // British Pound
-      JPY: 0.00,        // Japanese Yen
+      NGN: 100000.00,    // Nigerian Naira (enough for business upgrade)
+      EUR: 4500.00,      // Euro balance
+      GBP: 4000.00,      // British Pound balance
+      JPY: 750000.00,    // Japanese Yen balance
       last_updated: new Date().toISOString()
     };
   }

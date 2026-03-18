@@ -16,6 +16,11 @@ const MultiCurrencyWalletPage = () => {
   const [conversionAmount, setConversionAmount] = useState('');
   const [conversionResult, setConversionResult] = useState(null);
   const [crossBorderModal, setCrossBorderModal] = useState(false);
+  const [fundModal, setFundModal] = useState(false);
+  const [fundForm, setFundForm] = useState({
+    currency: 'USD',
+    amount: ''
+  });
   const [crossBorderForm, setCrossBorderForm] = useState({
     amount: '',
     fromCurrency: 'USD',
@@ -67,6 +72,39 @@ const MultiCurrencyWalletPage = () => {
       setSuccessMessage('Conversion calculated successfully!');
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to convert currency');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFundWallet = async (e) => {
+    e.preventDefault();
+    
+    if (!fundForm.amount || parseFloat(fundForm.amount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      // Mock fund wallet (add to balance)
+      const currentBalance = walletData[fundForm.currency] || 0;
+      const newBalance = currentBalance + parseFloat(fundForm.amount);
+      
+      // Update local state immediately
+      setWalletData(prev => ({
+        ...prev,
+        [fundForm.currency]: newBalance
+      }));
+
+      setSuccessMessage(`Successfully funded wallet with ${fundForm.amount} ${fundForm.currency}`);
+      setFundModal(false);
+      setFundForm({ currency: 'USD', amount: '' });
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to fund wallet');
     } finally {
       setIsLoading(false);
     }
@@ -338,7 +376,7 @@ const MultiCurrencyWalletPage = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <button
             onClick={() => setConversionModal(true)}
             className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-4 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
@@ -351,12 +389,23 @@ const MultiCurrencyWalletPage = () => {
             </div>
           </button>
           <button
+            onClick={() => setFundModal(true)}
+            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium py-4 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            <div className="flex items-center justify-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 0 3-2 1.657 0 3-.895 0-3-2m0 3c0 1.657-.895 3-2 3s-3 .895-3 2m0-3c0-1.657.895-3 2-3s3-.895 3-2" />
+              </svg>
+              Fund Wallet
+            </div>
+          </button>
+          <button
             onClick={() => setCrossBorderModal(true)}
             className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-medium py-4 px-6 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
           >
             <div className="flex items-center justify-center">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6m0 0v-4m0 0V5a2 2 0 00-2-2h-6.5l-1-1H3l3 6 3 6" />
               </svg>
               Cross-Border Escrow
             </div>
@@ -452,6 +501,73 @@ const MultiCurrencyWalletPage = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fund Wallet Modal */}
+      {fundModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-slate-900 rounded-xl p-8 max-w-md w-full mx-4 border border-slate-700 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">Fund Wallet</h3>
+              <button
+                onClick={() => setFundModal(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <form onSubmit={handleFundWallet} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Currency</label>
+                <select
+                  value={fundForm.currency}
+                  onChange={(e) => setFundForm({...fundForm, currency: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {Object.keys(walletData || {}).filter(c => c !== 'last_updated').map(currency => (
+                    <option key={currency} value={currency}>
+                      {getCurrencyFlag(currency)} {currency}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Amount</label>
+                <input
+                  type="number"
+                  value={fundForm.amount}
+                  onChange={(e) => setFundForm({...fundForm, amount: e.target.value})}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter amount"
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+              
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setFundModal(false)}
+                  className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                >
+                  {isLoading ? 'Funding...' : 'Fund Wallet'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
