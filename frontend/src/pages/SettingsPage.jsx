@@ -24,19 +24,56 @@ const SettingsPage = () => {
 
   const fetchUserData = async () => {
     try {
-      const [profileResponse, restrictionsResponse, auditResponse] = await Promise.all([
-        userAPI.getProfile(),
-        userAPI.checkAccountRestrictions(1),
-        userAPI.getAuditLogs()
-      ]);
+      // Check if admin login
+      const isAdmin = localStorage.getItem('isAdmin') === 'true';
+      
+      if (isAdmin) {
+        // Admin data (mock)
+        setUserData({
+          id: 1,
+          email: 'eazee1804@gmail.com',
+          phone: '+1234567890',
+          is_verified: true,
+          created_at: new Date().toISOString()
+        });
+        
+        setUserRestrictions({
+          risk_score: 5,
+          is_restricted: false,
+          restrictions: []
+        });
+        
+        setAuditLogs([
+          {
+            id: 1,
+            action: 'admin_login',
+            details: 'Admin logged in successfully',
+            ip_address: '127.0.0.1',
+            created_at: new Date().toISOString()
+          }
+        ]);
+      } else {
+        // Regular user data
+        const [profileResponse, restrictionsResponse, auditResponse] = await Promise.all([
+          userAPI.getProfile(),
+          userAPI.checkAccountRestrictions(1),
+          userAPI.getAuditLogs()
+        ]);
 
-      setUserData(profileResponse.data.data);
-      setUserRestrictions(restrictionsResponse.data.data);
-      setAuditLogs(auditResponse.data.data.audit_logs || []);
+        setUserData(profileResponse.data.data);
+        setUserRestrictions(restrictionsResponse.data.data);
+        setAuditLogs(auditResponse.data.data.audit_logs || []);
+      }
+      
+      // Set form data using the current userData
+      const currentData = userData || (isAdmin ? {
+        email: 'eazee1804@gmail.com',
+        phone: '+1234567890'
+      } : {});
       
       setFormData({
-        email: profileResponse.data.data.email || '',
-        phone: profileResponse.data.data.phone || '',
+        email: currentData.email || '',
+        phone: currentData.phone || '',
         notifications: true,
         twoFactor: false
       });
@@ -44,6 +81,7 @@ const SettingsPage = () => {
       console.error('Settings data fetch error:', error);
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
+        localStorage.removeItem('isAdmin');
         navigate('/login');
       } else {
         setError('Failed to load settings. Please try again.');
