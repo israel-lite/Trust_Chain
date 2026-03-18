@@ -16,18 +16,41 @@ const DashboardPage = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [userResponse, walletResponse] = await Promise.all([
-        userAPI.getProfile(),
-        walletAPI.getWallet()
-      ]);
+      // Check if admin login
+      const isAdmin = localStorage.getItem('isAdmin') === 'true';
+      
+      if (isAdmin) {
+        // Admin data (mock)
+        setUserData({
+          id: 1,
+          email: 'eazee1804@gmail.com',
+          is_verified: true,
+          created_at: new Date().toISOString()
+        });
+        
+        setWalletData({
+          id: 1,
+          balance: 100000.00, // Admin has higher balance
+          currency: 'USD',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+      } else {
+        // Regular user data
+        const [userResponse, walletResponse] = await Promise.all([
+          userAPI.getProfile(),
+          walletAPI.getWallet()
+        ]);
 
-      setUserData(userResponse.data.data);
-      setWalletData(walletResponse.data.data);
+        setUserData(userResponse.data.data);
+        setWalletData(walletResponse.data.data);
+      }
     } catch (error) {
       console.error('Dashboard data fetch error:', error);
       if (error.response?.status === 401) {
         // Token expired, redirect to login
         localStorage.removeItem('token');
+        localStorage.removeItem('isAdmin');
         navigate('/login');
       } else {
         setError('Failed to load dashboard data. Please try again.');
@@ -39,6 +62,7 @@ const DashboardPage = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('isAdmin');
     navigate('/login');
   };
 

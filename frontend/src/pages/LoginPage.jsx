@@ -69,7 +69,7 @@ const LoginPage = () => {
             navigate('/dashboard');
           }, 1500);
         } else {
-          throw { response: { data: { message: 'Login Fail' } } };
+          throw { response: { data: { message: 'Login Failed' } } };
         }
       } else {
         // Regular user login
