@@ -21,6 +21,15 @@ const failedLoginAttempts = {}; // Failed login attempts per user
 const userDevices = {}; // User device tracking
 const userReports = {}; // User fraud reports
 
+// TrustChain V4 - Multi-Currency & Business System
+const multiCurrencyWallets = {}; // Multi-currency wallet balances
+let exchangeRates = {}; // Mock exchange rates
+const businessAccounts = {}; // Business account information
+const apiKeys = {}; // External API keys
+const currencyTransactions = {}; // Currency-specific transactions
+const fraudDetectionScores = {}; // Advanced fraud scores
+const crossBorderTransactions = []; // International transactions
+
 // Helper functions
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 const generateToken = () => 'mock-jwt-token-' + Math.random().toString(36).substr(2, 9);
@@ -61,6 +70,137 @@ const calculateTrustScore = (userId) => {
   score += Math.min(accountAge / 30, 10); // +10 max for account age
   
   return Math.max(0, Math.min(100, score)); // Clamp between 0-100
+};
+
+// TrustChain V4 Helper Functions
+const initializeMultiCurrencyWallet = (userId) => {
+  if (!multiCurrencyWallets[userId]) {
+    multiCurrencyWallets[userId] = {
+      USD: 5000.00,     // Default USD balance
+      NGN: 0.00,        // Nigerian Naira
+      EUR: 0.00,        // Euro
+      GBP: 0.00,        // British Pound
+      JPY: 0.00,        // Japanese Yen
+      last_updated: new Date().toISOString()
+    };
+  }
+};
+
+const initializeExchangeRates = () => {
+  if (Object.keys(exchangeRates).length === 0) {
+    exchangeRates = {
+      USD: 1.00,        // Base currency
+      NGN: 1550.00,     // 1 USD = 1550 NGN
+      EUR: 0.92,        // 1 USD = 0.92 EUR
+      GBP: 0.79,        // 1 USD = 0.79 GBP
+      JPY: 149.50,      // 1 USD = 149.50 JPY
+      last_updated: new Date().toISOString()
+    };
+  }
+};
+
+const convertCurrency = (amount, fromCurrency, toCurrency) => {
+  initializeExchangeRates();
+  
+  if (fromCurrency === toCurrency) return amount;
+  
+  // Convert to USD first (base currency)
+  const usdAmount = amount / exchangeRates[fromCurrency];
+  // Then convert to target currency
+  return usdAmount * exchangeRates[toCurrency];
+};
+
+const initializeBusinessAccount = (userId) => {
+  if (!businessAccounts[userId]) {
+    businessAccounts[userId] = {
+      is_business: false,
+      business_name: null,
+      business_type: null,
+      registration_number: null,
+      verification_status: 'unverified', // unverified, pending, verified
+      business_limits: {
+        daily_escrow_limit: 1000,
+        single_escrow_limit: 500,
+        monthly_withdrawal_limit: 5000
+      },
+      api_access: false,
+      api_key: null,
+      created_at: null,
+      verified_at: null
+    };
+  }
+};
+
+const calculateAdvancedFraudScore = (userId) => {
+  const user = mockUsers.find(u => u.id === userId);
+  if (!user) return { risk_level: 'low', score: 0 };
+  
+  let riskScore = 0;
+  const factors = [];
+  
+  // Transaction pattern analysis
+  const userTransactions = transactions.filter(t => 
+    mockWallets[t.wallet_id]?.user_id === userId
+  );
+  
+  // Check for rapid transactions
+  const recentTransactions = userTransactions.filter(t => 
+    new Date(t.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+  );
+  
+  if (recentTransactions.length > 10) {
+    riskScore += 30;
+    factors.push('High transaction frequency');
+  }
+  
+  // Check for large transactions
+  const largeTransactions = userTransactions.filter(t => t.amount > 1000);
+  if (largeTransactions.length > userTransactions.length * 0.5) {
+    riskScore += 25;
+    factors.push('Unusually large transactions');
+  }
+  
+  // Check trust score
+  const trustScore = trustScores[userId]?.score || 50;
+  if (trustScore < 40) {
+    riskScore += 20;
+    factors.push('Low trust score');
+  }
+  
+  // Check verification level
+  const verificationLevel = verificationLevels[userId]?.level || 0;
+  if (verificationLevel < 2) {
+    riskScore += 15;
+    factors.push('Low verification level');
+  }
+  
+  // Check cross-border activity
+  const crossBorderCount = crossBorderTransactions.filter(t => 
+    t.user_id === userId
+  ).length;
+  
+  if (crossBorderCount > 5) {
+    riskScore += 20;
+    factors.push('High cross-border activity');
+  }
+  
+  // Determine risk level
+  let riskLevel = 'low';
+  if (riskScore >= 60) riskLevel = 'high';
+  else if (riskScore >= 30) riskLevel = 'medium';
+  
+  fraudDetectionScores[userId] = {
+    score: riskScore,
+    risk_level: riskLevel,
+    factors: factors,
+    last_calculated: new Date().toISOString()
+  };
+  
+  return fraudDetectionScores[userId];
+};
+
+const generateApiKey = (userId) => {
+  return 'tc_' + Math.random().toString(36).substr(2, 32);
 };
 
 const getTransactionLimits = (verificationLevel) => {
@@ -189,6 +329,11 @@ const mockAuthAPI = {
     // Initialize TrustChain V3 features
     initializeVerificationLevel(newUser.id);
     initializeTrustScore(newUser.id);
+    
+    // Initialize TrustChain V4 features
+    initializeMultiCurrencyWallet(newUser.id);
+    initializeBusinessAccount(newUser.id);
+    initializeExchangeRates();
     
     // Create wallet with initial balance and transactions
     const initialBalance = 5000.00;
@@ -1493,6 +1638,385 @@ const mockWalletAPI = {
         }
       }
     };
+  },
+
+  // TrustChain V4 - Multi-Currency APIs
+  getMultiCurrencyWallet: async () => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    const userId = 1;
+    initializeMultiCurrencyWallet(userId);
+    initializeExchangeRates();
+
+    return {
+      data: {
+        success: true,
+        data: {
+          balances: multiCurrencyWallets[userId],
+          exchange_rates: exchangeRates,
+          total_value_usd: Object.entries(multiCurrencyWallets[userId]).reduce((total, [currency, amount]) => {
+            if (currency === 'last_updated') return total;
+            return total + convertCurrency(amount, currency, 'USD');
+          }, 0)
+        }
+      }
+    };
+  },
+
+  convertCurrency: async (fromCurrency, toCurrency, amount) => {
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    initializeExchangeRates();
+    const convertedAmount = convertCurrency(amount, fromCurrency, toCurrency);
+    const rate = exchangeRates[toCurrency] / exchangeRates[fromCurrency];
+
+    return {
+      data: {
+        success: true,
+        data: {
+          from_currency: fromCurrency,
+          to_currency: toCurrency,
+          original_amount: amount,
+          converted_amount: convertedAmount,
+          exchange_rate: rate,
+          timestamp: new Date().toISOString()
+        }
+      }
+    };
+  },
+
+  createCrossBorderEscrow: async (amount, fromCurrency, toCurrency, recipientEmail, description) => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    const userId = 1;
+    initializeMultiCurrencyWallet(userId);
+    initializeExchangeRates();
+
+    // Convert amount to USD for processing
+    const usdAmount = convertCurrency(amount, fromCurrency, 'USD');
+    const recipientAmount = convertCurrency(usdAmount, 'USD', toCurrency);
+
+    // Check user has sufficient balance
+    if (multiCurrencyWallets[userId][fromCurrency] < amount) {
+      throw { response: { data: { message: 'Insufficient balance' } } };
+    }
+
+    // Create cross-border transaction record
+    const crossBorderTx = {
+      id: crossBorderTransactions.length + 1,
+      user_id: userId,
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
+      original_amount: amount,
+      usd_amount: usdAmount,
+      recipient_amount: recipientAmount,
+      recipient_email: recipientEmail,
+      description: description,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+    crossBorderTransactions.push(crossBorderTx);
+
+    // Lock funds in source currency
+    multiCurrencyWallets[userId][fromCurrency] -= amount;
+
+    // Add notification
+    const notification = {
+      id: notifications.length + 1,
+      user_id: userId,
+      type: 'cross_border_escrow_created',
+      title: 'Cross-Border Escrow Created',
+      message: `Escrow created for ${amount} ${fromCurrency} → ${recipientAmount.toFixed(2)} ${toCurrency}`,
+      read: false,
+      created_at: new Date().toISOString()
+    };
+    notifications.push(notification);
+
+    return {
+      data: {
+        success: true,
+        message: 'Cross-border escrow created successfully',
+        data: {
+          escrow_id: crossBorderTx.id,
+          conversion_details: {
+            from: `${amount} ${fromCurrency}`,
+            to: `${recipientAmount.toFixed(2)} ${toCurrency}`,
+            usd_equivalent: `$${usdAmount.toFixed(2)}`
+          }
+        }
+      }
+    };
+  },
+
+  // TrustChain V4 - Business Account APIs
+  getBusinessAccount: async () => {
+    await new Promise(resolve => setTimeout(resolve, 400));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    const userId = 1;
+    initializeBusinessAccount(userId);
+
+    return {
+      data: {
+        success: true,
+        data: businessAccounts[userId]
+      }
+    };
+  },
+
+  upgradeToBusinessAccount: async (businessName, businessType, registrationNumber, paymentCurrency, paymentAmount) => {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    const userId = 1;
+    initializeBusinessAccount(userId);
+    initializeMultiCurrencyWallet(userId);
+
+    // Check payment amount (3,000 in any currency)
+    const requiredAmount = 3000;
+    if (paymentAmount < requiredAmount) {
+      throw { response: { data: { message: `Payment amount must be at least 3,000 ${paymentCurrency}` } } };
+    }
+
+    // Check user has sufficient balance
+    if (multiCurrencyWallets[userId][paymentCurrency] < paymentAmount) {
+      throw { response: { data: { message: `Insufficient ${paymentCurrency} balance for business upgrade` } } };
+    }
+
+    // Process payment
+    multiCurrencyWallets[userId][paymentCurrency] -= paymentAmount;
+
+    // Create payment transaction
+    const paymentTx = {
+      id: transactions.length + 1,
+      wallet_id: Object.keys(mockWallets)[userId] || 1,
+      type: 'business_upgrade_fee',
+      amount: paymentAmount,
+      currency: paymentCurrency,
+      old_balance: multiCurrencyWallets[userId][paymentCurrency] + paymentAmount,
+      new_balance: multiCurrencyWallets[userId][paymentCurrency],
+      status: 'completed',
+      created_at: new Date().toISOString(),
+      reference: 'BIZ-UPGRADE-' + Date.now(),
+      description: `Business account upgrade fee`
+    };
+    transactions.push(paymentTx);
+
+    const business = businessAccounts[userId];
+    business.is_business = true;
+    business.business_name = businessName;
+    business.business_type = businessType;
+    business.registration_number = registrationNumber;
+    business.created_at = new Date().toISOString();
+    business.verification_status = 'pending';
+    business.upgrade_fee_paid = paymentAmount;
+    business.upgrade_fee_currency = paymentCurrency;
+
+    // Add notification
+    const notification = {
+      id: notifications.length + 1,
+      user_id: userId,
+      type: 'business_upgrade_paid',
+      title: 'Business Account Upgrade Paid',
+      message: `Payment of ${paymentAmount} ${paymentCurrency} received. Your business account upgrade for "${businessName}" is being reviewed.`,
+      read: false,
+      created_at: new Date().toISOString()
+    };
+    notifications.push(notification);
+
+    // Add audit log
+    const auditLog = {
+      id: auditLogs.length + 1,
+      user_id: userId,
+      action: 'business_upgrade_payment',
+      details: `Business upgrade payment: ${paymentAmount} ${paymentCurrency} for ${businessName}`,
+      ip_address: '127.0.0.1',
+      user_agent: 'TrustChain Frontend V4',
+      created_at: new Date().toISOString()
+    };
+    auditLogs.push(auditLog);
+
+    return {
+      data: {
+        success: true,
+        message: 'Business account upgrade paid successfully! Your application is being reviewed.',
+        data: {
+          business_name: businessName,
+          verification_status: 'pending',
+          payment_amount: paymentAmount,
+          payment_currency: paymentCurrency,
+          new_limits: business.business_limits
+        }
+      }
+    };
+  },
+
+  verifyBusinessAccount: async (documents) => {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    const userId = 1;
+    const business = businessAccounts[userId];
+
+    if (!business.is_business) {
+      throw { response: { data: { message: 'No business account found' } } };
+    }
+
+    // Mock verification process
+    business.verification_status = 'verified';
+    business.verified_at = new Date().toISOString();
+    business.business_limits = {
+      daily_escrow_limit: 10000,
+      single_escrow_limit: 5000,
+      monthly_withdrawal_limit: 50000
+    };
+
+    // Add notification
+    const notification = {
+      id: notifications.length + 1,
+      user_id: userId,
+      type: 'business_verified',
+      title: 'Business Account Verified',
+      message: `Your business "${business.business_name}" is now verified! ✔`,
+      read: false,
+      created_at: new Date().toISOString()
+    };
+    notifications.push(notification);
+
+    return {
+      data: {
+        success: true,
+        message: 'Business account verified successfully',
+        data: {
+          verification_status: 'verified',
+          verified_badge: true,
+          new_limits: business.business_limits
+        }
+      }
+    };
+  },
+
+  generateApiKey: async () => {
+    await new Promise(resolve => setTimeout(resolve, 600));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    const userId = 1;
+    const business = businessAccounts[userId];
+
+    if (!business.is_business || business.verification_status !== 'verified') {
+      throw { response: { data: { message: 'Business account must be verified to access API' } } };
+    }
+
+    const apiKey = generateApiKey(userId);
+    business.api_key = apiKey;
+    business.api_access = true;
+
+    // Store API key
+    apiKeys[apiKey] = {
+      user_id: userId,
+      business_name: business.business_name,
+      permissions: ['create_escrow', 'release_funds', 'check_status'],
+      created_at: new Date().toISOString(),
+      last_used: null
+    };
+
+    return {
+      data: {
+        success: true,
+        message: 'API key generated successfully',
+        data: {
+          api_key: apiKey,
+          permissions: apiKeys[apiKey].permissions
+        }
+      }
+    };
+  },
+
+  // TrustChain V4 - Advanced Fraud Detection
+  getAdvancedFraudScore: async () => {
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw { response: { data: { message: 'Unauthorized' } } };
+    }
+
+    const userId = 1;
+    const fraudScore = calculateAdvancedFraudScore(userId);
+
+    return {
+      data: {
+        success: true,
+        data: fraudScore
+      }
+    };
+  },
+
+  // TrustChain V4 - External API (for integration testing)
+  externalCreateEscrow: async (apiKey, amount, currency, recipientEmail, description) => {
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    // Validate API key
+    const keyData = apiKeys[apiKey];
+    if (!keyData) {
+      throw { response: { data: { message: 'Invalid API key' } } };
+    }
+
+    // Check permissions
+    if (!keyData.permissions.includes('create_escrow')) {
+      throw { response: { data: { message: 'Insufficient permissions' } } };
+    }
+
+    // Update last used
+    keyData.last_used = new Date().toISOString();
+
+    // Create escrow (simplified for external API)
+    const escrowId = 'EXT-' + Date.now();
+    
+    return {
+      data: {
+        success: true,
+        data: {
+          escrow_id: escrowId,
+          status: 'created',
+          amount: amount,
+          currency: currency,
+          recipient: recipientEmail,
+          created_by: keyData.business_name
+        }
+      }
+    };
   }
 };
 
@@ -1602,6 +2126,39 @@ export const enhancedApi = {
     reportSuspiciousActivity: async (reportedUserId, reason, description) => {
       const available = await isBackendAvailable();
       return available ? userAPI.reportSuspiciousActivity(reportedUserId, reason, description) : mockAuthAPI.reportSuspiciousActivity(reportedUserId, reason, description);
+    },
+    // TrustChain V4 APIs
+    getMultiCurrencyWallet: async () => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.getMultiCurrencyWallet() : mockAuthAPI.getMultiCurrencyWallet();
+    },
+    convertCurrency: async (fromCurrency, toCurrency, amount) => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.convertCurrency(fromCurrency, toCurrency, amount) : mockAuthAPI.convertCurrency(fromCurrency, toCurrency, amount);
+    },
+    createCrossBorderEscrow: async (amount, fromCurrency, toCurrency, recipientEmail, description) => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.createCrossBorderEscrow(amount, fromCurrency, toCurrency, recipientEmail, description) : mockAuthAPI.createCrossBorderEscrow(amount, fromCurrency, toCurrency, recipientEmail, description);
+    },
+    getBusinessAccount: async () => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.getBusinessAccount() : mockAuthAPI.getBusinessAccount();
+    },
+    upgradeToBusinessAccount: async (businessName, businessType, registrationNumber, paymentCurrency, paymentAmount) => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.upgradeToBusinessAccount(businessName, businessType, registrationNumber, paymentCurrency, paymentAmount) : mockAuthAPI.upgradeToBusinessAccount(businessName, businessType, registrationNumber, paymentCurrency, paymentAmount);
+    },
+    verifyBusinessAccount: async (documents) => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.verifyBusinessAccount(documents) : mockAuthAPI.verifyBusinessAccount(documents);
+    },
+    generateApiKey: async () => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.generateApiKey() : mockAuthAPI.generateApiKey();
+    },
+    getAdvancedFraudScore: async () => {
+      const available = await isBackendAvailable();
+      return available ? userAPI.getAdvancedFraudScore() : mockAuthAPI.getAdvancedFraudScore();
     }
   },
   wallet: {

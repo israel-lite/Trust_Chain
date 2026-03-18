@@ -12,6 +12,8 @@ import EscrowPage from './pages/EscrowPage';
 import TransactionsPage from './pages/TransactionsPage';
 import SettingsPage from './pages/SettingsPage';
 import VerificationPage from './pages/VerificationPage';
+import MultiCurrencyWalletPage from './pages/MultiCurrencyWalletPage';
+import BusinessAccountPage from './pages/BusinessAccountPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import TermsOfServicePage from './pages/TermsOfServicePage';
 
@@ -32,6 +34,8 @@ function App() {
           <Route path="/transactions" element={<TransactionsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/verification" element={<VerificationPage />} />
+          <Route path="/multi-currency-wallet" element={<MultiCurrencyWalletPage />} />
+          <Route path="/business-account" element={<BusinessAccountPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

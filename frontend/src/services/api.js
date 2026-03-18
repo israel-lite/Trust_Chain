@@ -62,6 +62,15 @@ export const userAPI = {
   getTrustScore: () => enhancedApi.user.getTrustScore(),
   getTrustProfile: () => enhancedApi.user.getTrustProfile(),
   reportSuspiciousActivity: (reportedUserId, reason, description) => enhancedApi.user.reportSuspiciousActivity(reportedUserId, reason, description),
+  // TrustChain V4 APIs
+  getMultiCurrencyWallet: () => enhancedApi.user.getMultiCurrencyWallet(),
+  convertCurrency: (fromCurrency, toCurrency, amount) => enhancedApi.user.convertCurrency(fromCurrency, toCurrency, amount),
+  createCrossBorderEscrow: (amount, fromCurrency, toCurrency, recipientEmail, description) => enhancedApi.user.createCrossBorderEscrow(amount, fromCurrency, toCurrency, recipientEmail, description),
+  getBusinessAccount: () => enhancedApi.user.getBusinessAccount(),
+  upgradeToBusinessAccount: (businessName, businessType, registrationNumber, paymentCurrency, paymentAmount) => enhancedApi.user.upgradeToBusinessAccount(businessName, businessType, registrationNumber, paymentCurrency, paymentAmount),
+  verifyBusinessAccount: (documents) => enhancedApi.user.verifyBusinessAccount(documents),
+  generateApiKey: () => enhancedApi.user.generateApiKey(),
+  getAdvancedFraudScore: () => enhancedApi.user.getAdvancedFraudScore(),
 };
 
 // Wallet API
